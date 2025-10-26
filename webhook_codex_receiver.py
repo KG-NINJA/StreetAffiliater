@@ -1,9 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 import aiohttp, os, json
 
 app = FastAPI()
 
+# CORS許可（フロントのGitHub Pagesからアクセス可）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,6 +18,7 @@ app.add_middleware(
 def root():
     return {"status": "StreetAffiliater Codex Web is running (OpenAI Codex Cloud mode)"}
 
+
 @app.post("/api/comment")
 async def comment_to_app(request: Request):
     data = await request.json()
@@ -24,9 +27,6 @@ async def comment_to_app(request: Request):
     prompt = f"""
 コメント: {comment}
 
-上記のコメントに関連するユーモアを交えた1ページHTML/JSアプリを生成してください。
-要件:
--prompt = f"""
 以下の要件を満たす実行可能なHTML+JavaScriptアプリを生成してください。
 - 1ファイルで動作する（index.html形式）
 - 完全にブラウザ側で動く
@@ -34,7 +34,7 @@ async def comment_to_app(request: Request):
 - 外部ライブラリを使う場合はCDNを利用
 - アフィリエイトリンクを自然に配置
 - コード以外の説明文は不要。純粋なHTMLだけを返す
-- フッターに #KGNINJA #StreetAffiliater
+- フッターに #KGNINJA #StreetAffiliater を表示
 - 内容に関連するアフィリエイトリンクを1つ自然に配置（例: Amazon）
 """
 
@@ -49,12 +49,10 @@ async def comment_to_app(request: Request):
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(
-            "https://api.openai.com/v1/responses", headers=headers, json=body
-        ) as resp:
+        async with session.post("https://api.openai.com/v1/responses", headers=headers, json=body) as resp:
             data = await resp.json()
             try:
                 html = data["output"][0]["content"][0]["text"]
             except Exception:
-                html = json.dumps(data, ensure_ascii=False)
-            return {"html": html}
+                html = "<pre>" + json.dumps(data, ensure_ascii=False, indent=2) + "</pre>"
+            return HTMLResponse(content=html, status_code=200)
