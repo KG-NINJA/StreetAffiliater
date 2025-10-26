@@ -1,8 +1,23 @@
+# Render 用デプロイ設定
+# FastAPI + Codex Webhook エンドポイント
+
 services:
   - type: web
     name: streetaffiliater-codex-web
     env: python
-    plan: free
     region: oregon
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn webhook_codex_receiver:app --host 0.0.0.0 --port $PORT
+    plan: free
+
+    buildCommand: |
+      pip install -r requirements.txt
+
+    startCommand: |
+      uvicorn webhook_codex_receiver:app --host 0.0.0.0 --port $PORT
+
+    envVars:
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: REPO_PATH
+        value: /opt/render/project/src
+      - key: CODEX_BIN
+        value: /usr/local/bin/codex
