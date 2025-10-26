@@ -1,24 +1,3 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-import aiohttp, os, json
-
-app = FastAPI()
-
-# CORS許可（フロントのGitHub Pagesからアクセス可）
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-def root():
-    return {"status": "StreetAffiliater Codex Web is running (OpenAI Codex Cloud mode)"}
-
-
 @app.post("/api/comment")
 async def comment_to_app(request: Request):
     data = await request.json()
@@ -53,6 +32,8 @@ async def comment_to_app(request: Request):
             data = await resp.json()
             try:
                 html = data["output"][0]["content"][0]["text"]
+                # ← コードブロック削除
+                html = html.replace("```html", "").replace("```", "").strip()
             except Exception:
                 html = "<pre>" + json.dumps(data, ensure_ascii=False, indent=2) + "</pre>"
             return HTMLResponse(content=html, status_code=200)
