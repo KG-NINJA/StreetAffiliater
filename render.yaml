@@ -6,19 +6,3 @@ services:
     region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn webhook_codex_receiver:app --host 0.0.0.0 --port $PORT
-```
-
-2. **Ensure you have a `requirements.txt`** file in your root directory with:
-```
-fastapi
-uvicorn
-aiohttp
-```
-
-3. **Remove or rename `package.json`** if it exists and isn't needed for your Python app. This is likely what's causing Render to think it's a Node.js project.
-
-4. **Re-deploy** after making these changes.
-
-If you want to keep Node.js files but tell Render to use Python, you can also add a `runtime.txt` file in the root with:
-```
-python-3.11
