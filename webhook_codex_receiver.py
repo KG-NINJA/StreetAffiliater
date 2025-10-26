@@ -26,9 +26,15 @@ async def comment_to_app(request: Request):
 
 上記のコメントに関連するユーモアを交えた1ページHTML/JSアプリを生成してください。
 要件:
-- 背景は落ち着いたブルー系
-- クライアントサイドのみ
-- フッターに #KGNINJA #StreetAffiliater を表示
+-prompt = f"""
+以下の要件を満たす実行可能なHTML+JavaScriptアプリを生成してください。
+- 1ファイルで動作する（index.html形式）
+- 完全にブラウザ側で動く
+- JSコードは<body>内に埋め込む
+- 外部ライブラリを使う場合はCDNを利用
+- アフィリエイトリンクを自然に配置
+- コード以外の説明文は不要。純粋なHTMLだけを返す
+- フッターに #KGNINJA #StreetAffiliater
 - 内容に関連するアフィリエイトリンクを1つ自然に配置（例: Amazon）
 """
 
