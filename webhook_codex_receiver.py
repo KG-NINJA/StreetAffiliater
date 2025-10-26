@@ -14,14 +14,13 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"status": "StreetAffiliater Codex Web is running (Cloud API mode)"}
+    return {"status": "StreetAffiliater Codex Web is running (OpenAI Codex Cloud mode)"}
 
 @app.post("/api/comment")
 async def comment_to_app(request: Request):
     data = await request.json()
     comment = data.get("comment", "")
 
-    # プロンプト生成
     prompt = f"""
 コメント: {comment}
 
@@ -33,22 +32,23 @@ async def comment_to_app(request: Request):
 - アフィリエイトリンクを1つ自然に配置（例: Amazon）
 """
 
-    # Codex Cloud API 情報
-    endpoint = os.getenv("CODEX_ENDPOINT", "https://api.codex.cloud/v1/run")
-    token = os.getenv("CODEX_TOKEN")
-    model = os.getenv("CODEX_MODEL", "gpt-4o-mini")
-
     headers = {
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json",
     }
-    payload = {"model": model, "prompt": prompt, "sandbox": "workspace-write"}
+
+    body = {
+        "model": os.getenv("CODEX_MODEL", "gpt-4o-mini"),
+        "input": prompt
+    }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(endpoint, headers=headers, data=json.dumps(payload)) as r:
-            text = await r.text()
+        async with session.post(
+            "https://api.openai.com/v1/responses", headers=headers, json=body
+        ) as resp:
+            data = await resp.json()
             try:
-                result = json.loads(text)
-                return {"html": result.get("output", text)}
+                html = data["output"][0]["content"][0]["text"]
             except Exception:
-                return {"html": text}
+                html = json.dumps(data, ensure_ascii=False)
+            return {"html": html}
