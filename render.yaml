@@ -1,8 +1,11 @@
 services:
   - type: web
-    name: streetaffiliater-codex-web
+    name: streetaffiliater
     env: python
-    region: oregon
-    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn webhook_codex_receiver:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CODEX_MODEL
+        value: gpt-4o-mini
