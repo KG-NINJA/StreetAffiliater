@@ -24,12 +24,12 @@ async def comment_to_app(request: Request):
     prompt = f"""
 コメント: {comment}
 
-上記のコメントをもとに、軽いユーモアを交えた1ページHTML/JSアプリを生成してください。
+上記のコメントに関連するユーモアを交えた1ページHTML/JSアプリを生成してください。
 要件:
 - 背景は落ち着いたブルー系
 - クライアントサイドのみ
-- フッターに #KGNINJA StreetAffiliater を表示
-- アフィリエイトリンクを1つ自然に配置（例: Amazon）
+- フッターに #KGNINJA #StreetAffiliater を表示
+- 内容に関連するアフィリエイトリンクを1つ自然に配置（例: Amazon）
 """
 
     headers = {
