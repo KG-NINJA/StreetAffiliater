@@ -3,157 +3,140 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StreetAffiliater v3</title>
+  <title>StreetAffiliater v3 — KGNINJA Matrix Mode</title>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
-      background-color: #0a0f14;
-      color: #00ff9c;
-      text-align: center;
-      padding: 40px;
-      overflow-x: hidden;
+      margin: 0;
+      background: black;
+      color: #0f0;
+      overflow: hidden;
+      font-family: monospace;
     }
-    h1 {
-      color: #00ffaa;
-      margin-bottom: 30px;
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    #ui {
+      position: relative;
+      z-index: 2;
+      color: #00ffcc;
+      text-align: center;
+      margin-top: 10vh;
     }
     textarea {
       width: 80%;
       height: 100px;
-      border: none;
-      border-radius: 5px;
-      padding: 10px;
+      background: rgba(0, 20, 0, 0.8);
+      border: 1px solid #00ff99;
+      color: #00ff99;
       font-size: 16px;
-      resize: none;
+      padding: 10px;
+      border-radius: 5px;
     }
     button {
       margin: 10px;
-      padding: 12px 20px;
+      padding: 10px 20px;
+      background: #00ff99;
       border: none;
-      border-radius: 6px;
-      background: linear-gradient(90deg, #00ffaa, #0077ff);
       color: #000;
       font-weight: bold;
       cursor: pointer;
       transition: transform 0.2s;
+      border-radius: 5px;
     }
     button:hover {
       transform: scale(1.05);
     }
     #result {
-      margin-top: 30px;
-      color: #fff;
-      text-align: left;
       max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
-      background: rgba(255,255,255,0.05);
+      margin: 30px auto;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid #00ff99;
+      color: #fff;
       padding: 20px;
       border-radius: 10px;
     }
-
-    /* 🧠 マトリックス風スピナー */
-    #matrix-spinner {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      visibility: hidden;
-    }
-    #matrix-canvas {
-      width: 100%;
-      height: 100%;
-    }
-
     footer {
-      margin-top: 40px;
-      color: #00ffaa;
-      font-size: 14px;
-      opacity: 0.8;
+      text-align: center;
+      color: #00ff99;
+      font-size: 12px;
+      position: fixed;
+      bottom: 10px;
+      width: 100%;
+      z-index: 3;
     }
   </style>
 </head>
-
 <body>
-  <h1>StreetAffiliater v3 🧠</h1>
-  <p>コメントを入力すると、AIが即興でミニアプリを生成します。</p>
+  <canvas id="matrix-canvas"></canvas>
 
-  <textarea id="comment" placeholder="例: 犬が喜ぶアプリを作って"></textarea><br />
-  <button id="generate-btn">生成する</button>
-  <button id="tweet-btn">Tweetで共有</button>
-
-  <div id="result"></div>
-
-  <div id="matrix-spinner">
-    <canvas id="matrix-canvas"></canvas>
+  <div id="ui">
+    <h1>StreetAffiliater v3 🧠</h1>
+    <p>コメントを入力して、AIがアプリを生成します。</p>
+    <textarea id="comment" placeholder="例: 犬が喜ぶアプリを作って"></textarea><br/>
+    <button id="generate-btn">生成する</button>
+    <button id="tweet-btn">Tweetで共有</button>
+    <div id="result"></div>
   </div>
 
   <footer>#KGNINJA #StreetAffiliater</footer>
 
   <script>
-    const generateBtn = document.getElementById("generate-btn");
-    const resultDiv = document.getElementById("result");
-    const spinner = document.getElementById("matrix-spinner");
+    // === 🧠 マトリックス文字雨 ===
     const canvas = document.getElementById("matrix-canvas");
     const ctx = canvas.getContext("2d");
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    const letters = "アカサタナハマヤラワ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZKGNINJA".split("");
+    const fontSize = 16;
+    const columns = Math.floor(width / fontSize);
+    const drops = Array(columns).fill(1);
 
-    // 🧮 マトリックス風エフェクト
-    let letters = Array(256).join(1).split('');
-    function drawMatrix() {
-      const w = canvas.width = window.innerWidth;
-      const h = canvas.height = window.innerHeight;
+    function draw() {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "#0F0";
-      ctx.font = "16px monospace";
-      letters.map((y_pos, index) => {
-        const text = String.fromCharCode(12448 + Math.random() * 96);
-        const x = index * 10;
-        ctx.fillText(text, x, y_pos);
-        letters[index] = y_pos > 758 + Math.random() * 1e4 ? 0 : y_pos + 10;
-      });
-      if (spinner.style.visibility === "visible") {
-        requestAnimationFrame(drawMatrix);
+      ctx.font = fontSize + "px monospace";
+      for (let i = 0; i < drops.length; i++) {
+        const text = letters[Math.floor(Math.random() * letters.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+        ctx.fillText(text, x, y);
+        if (y > height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
       }
+      requestAnimationFrame(draw);
     }
+    draw();
+    window.addEventListener("resize", () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
 
-    function showSpinner() {
-      spinner.style.visibility = "visible";
-      drawMatrix();
-    }
-
-    function hideSpinner() {
-      spinner.style.visibility = "hidden";
-    }
-
-    async function sendComment() {
+    // === 🌈 API呼び出し ===
+    const resultDiv = document.getElementById("result");
+    document.getElementById("generate-btn").addEventListener("click", async () => {
       const comment = document.getElementById("comment").value.trim();
       if (!comment) {
         alert("コメントを入力してください。");
         return;
       }
-      showSpinner();
-      resultDiv.innerHTML = "";
+      resultDiv.innerHTML = "<p style='color:#0f0'>生成中...</p>";
+      const res = await fetch("https://streetaffiliater-1.onrender.com/api/comment", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ comment })
+      });
+      const data = await res.json();
+      resultDiv.innerHTML = data.html || "<p>生成に失敗しました。</p>";
+      bindTweet(comment);
+    });
 
-      try {
-        const res = await fetch("https://streetaffiliater-1.onrender.com/api/comment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ comment })
-        });
-        const data = await res.json();
-        hideSpinner();
-        resultDiv.innerHTML = data.html || "<p>生成に失敗しました。</p>";
-        bindTweet(comment);
-      } catch (err) {
-        hideSpinner();
-        resultDiv.innerHTML = `<p style="color:red;">エラー: ${err}</p>`;
-      }
-    }
-
+    // === 🐦 ツイートボタン ===
     function bindTweet(commentText) {
       const baseText = "#KGNINJA #StreetAffiliater 生成アプリ";
       const preview = commentText ? `「${commentText.slice(0,80)}」` : "";
@@ -164,11 +147,8 @@
       }&url=${
         encodeURIComponent(url)
       }&hashtags=KGNINJA,StreetAffiliater`;
-      const btn = document.getElementById("tweet-btn");
-      if (btn) btn.onclick = () => window.open(intent, "_blank", "noopener");
+      document.getElementById("tweet-btn").onclick = () => window.open(intent, "_blank", "noopener");
     }
-
-    generateBtn.addEventListener("click", sendComment);
   </script>
 </body>
 </html>
