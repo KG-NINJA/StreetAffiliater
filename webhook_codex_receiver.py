@@ -1,13 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-import subprocess
+import aiohttp, os, json
 
 app = FastAPI()
 
-# ✅ CORS設定を追加
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 必要に応じてGitHub PagesのURLに限定可能
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -15,13 +14,14 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"status": "StreetAffiliater Codex Web is running"}
+    return {"status": "StreetAffiliater Codex Web is running (Cloud API mode)"}
 
 @app.post("/api/comment")
 async def comment_to_app(request: Request):
     data = await request.json()
     comment = data.get("comment", "")
 
+    # プロンプト生成
     prompt = f"""
 コメント: {comment}
 
@@ -33,10 +33,22 @@ async def comment_to_app(request: Request):
 - アフィリエイトリンクを1つ自然に配置（例: Amazon）
 """
 
-    # Codex CLI 実行（出力をHTMLとして返す）
-    result = subprocess.run(
-        ["codex", "run", "--model", "gpt-4o-mini", "--prompt", prompt],
-        capture_output=True, text=True
-    )
+    # Codex Cloud API 情報
+    endpoint = os.getenv("CODEX_ENDPOINT", "https://api.codex.cloud/v1/run")
+    token = os.getenv("CODEX_TOKEN")
+    model = os.getenv("CODEX_MODEL", "gpt-4o-mini")
 
-    return {"html": result.stdout.strip()}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    payload = {"model": model, "prompt": prompt, "sandbox": "workspace-write"}
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(endpoint, headers=headers, data=json.dumps(payload)) as r:
+            text = await r.text()
+            try:
+                result = json.loads(text)
+                return {"html": result.get("output", text)}
+            except Exception:
+                return {"html": text}
