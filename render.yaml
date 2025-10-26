@@ -1,28 +1,11 @@
-Workflow file for this run
-.github/workflows/render.yaml at ecdd8ec
-# Render 用デプロイ構成ファイル
- Check failure on line 1 in .github/workflows/render.yaml
-
-
-GitHub Actions
-/ .github/workflows/render.yaml
-Invalid workflow file
-
-(Line: 5, Col: 1): Unexpected value 'services', (Line: 5, Col: 1): Required property is missing: jobs
-# FastAPI + Codex Webhook エンドポイント
-# 自動で /api/webhook/street を公開し、Issueイベントを受信
-
 services:
   - type: web
     name: streetaffiliater-codex-web
     env: python
     region: oregon
     plan: free
-
-    buildCommand: |
-      pip install -r requirements.txt
-    startCommand: |
-      uvicorn webhook_codex_receiver:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn webhook_codex_receiver:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: GITHUB_TOKEN
         sync: false
