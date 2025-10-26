@@ -24,3 +24,26 @@ async def handle_webhook(request: Request):
 
     print(result.stdout)
     return {"status": "ok", "message": result.stdout}
+@app.post("/api/comment")
+async def comment_to_app(request: Request):
+    data = await request.json()
+    comment = data.get("comment", "")
+
+    # Codexへ指示するプロンプト
+    prompt = f"""
+コメント: {comment}
+
+上記のコメントをもとに、軽いユーモアを交えた1ページHTML/JSアプリを生成してください。
+要件:
+- 背景は落ち着いたブルー系
+- クライアントサイドのみ
+- フッターに #KGNINJA StreetAffiliater を表示
+- アフィリエイトリンクを1つ自然に配置（例: Amazon）
+"""
+
+    result = subprocess.run(
+        ["codex", "run", "--model", "gpt-4o-mini", "--prompt", prompt],
+        capture_output=True, text=True
+    )
+
+    return {"html": result.stdout.strip()}
