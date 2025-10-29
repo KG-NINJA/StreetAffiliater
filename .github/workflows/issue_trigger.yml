@@ -1,5 +1,4 @@
-name: Issue trigger
-
+name: Issue trigger - App Generation
 on:
   issues:
     types:
@@ -8,36 +7,294 @@ on:
       - reopened
 
 jobs:
-  dispatch:
+  generate-app:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     steps:
       - name: コードを取得
         uses: actions/checkout@v4
 
+      - name: Node.js をセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 依存パッケージをインストール
+        run: |
+          npm install axios dotenv
+
+      - name: 課題の詳細情報を取得
+        id: issue_info
+        run: |
+          ISSUE_BODY="${{ github.event.issue.body }}"
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          
+          echo "title=${ISSUE_TITLE}" >> $GITHUB_OUTPUT
+          echo "body=${ISSUE_BODY}" >> $GITHUB_OUTPUT
+          echo "number=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
+
       - name: Codex Webへ課題情報を送信
+        id: webhook_response
         env:
           WEBHOOK_URL: ${{ secrets.CODEX_WEBHOOK_URL }}
         run: |
-          # 日本語コメント: Webhook URLが未設定の場合は安全に終了する
           if [ -z "${WEBHOOK_URL}" ]; then
             echo "CODEX_WEBHOOK_URL が設定されていないため送信をスキップします。"
             exit 0
           fi
-          curl --fail --show-error --silent \
+          
+          RESPONSE=$(curl --fail --show-error --silent \
             -X POST "${WEBHOOK_URL}" \
             -H "Content-Type: application/json" \
-            --data @"${GITHUB_EVENT_PATH}" \
-            --output /tmp/codex-web-response.json
-          echo "Codex Web 応答:" && cat /tmp/codex-web-response.json
+            -d @"${GITHUB_EVENT_PATH}")
+          
+          echo "response=${RESPONSE}" >> $GITHUB_OUTPUT
+          echo "Codex Web 応答: ${RESPONSE}"
 
-      - name: PR自動生成スクリプトを実行
+      - name: アプリ生成スクリプトを実行
         if: contains(github.event.issue.labels.*.name, 'auto-pr')
+        id: generate_app
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          ISSUE_TITLE: ${{ steps.issue_info.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue_info.outputs.body }}
+          ISSUE_NUMBER: ${{ steps.issue_info.outputs.number }}
         run: |
-          # 日本語コメント: 自動PR生成スクリプトを実行
-          chmod +x ./codex_generate_and_pr.sh
-          ./codex_generate_and_pr.sh "${ISSUE_NUMBER}"
+          mkdir -p generated-app
+          
+          node - "${{ env.ISSUE_TITLE }}" "${{ env.ISSUE_BODY }}" << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          const [appTitle, appDescription] = process.argv.slice(2);
+          
+          console.log(`📦 アプリ生成開始: ${appTitle}`);
+          
+          // React アプリのテンプレートを生成
+          const packageJson = {
+            name: appTitle.toLowerCase().replace(/\s+/g, '-'),
+            version: "1.0.0",
+            description: appDescription || "Generated app",
+            scripts: {
+              start: "react-scripts start",
+              build: "react-scripts build",
+              test: "react-scripts test"
+            },
+            dependencies: {
+              react: "^18.2.0",
+              "react-dom": "^18.2.0",
+              "react-scripts": "5.0.1"
+            }
+          };
+          
+          fs.writeFileSync('generated-app/package.json', JSON.stringify(packageJson, null, 2));
+          
+          // メインコンポーネント
+          const appComponent = `import React, { useState } from 'react';
+          import './App.css';
+          
+          function App() {
+            const [count, setCount] = useState(0);
+          
+            return (
+              <div className="App">
+                <header className="App-header">
+                  <h1>${appTitle}</h1>
+                  <p>${appDescription || 'Auto-generated application'}</p>
+                  <div className="counter">
+                    <p>Current count: {count}</p>
+                    <button onClick={() => setCount(count + 1)}>Increment</button>
+                    <button onClick={() => setCount(count - 1)}>Decrement</button>
+                    <button onClick={() => setCount(0)}>Reset</button>
+                  </div>
+                </header>
+              </div>
+            );
+          }
+          
+          export default App;`;
+          
+          fs.writeFileSync('generated-app/App.jsx', appComponent);
+          
+          // スタイルシート
+          const appCss = `.App {
+            text-align: center;
+          }
+          
+          .App-header {
+            background-color: #282c34;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(10px + 2vmin);
+            color: white;
+          }
+          
+          h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+          }
+          
+          .counter {
+            margin-top: 2rem;
+            padding: 2rem;
+            border: 2px solid #61dafb;
+            border-radius: 8px;
+          }
+          
+          button {
+            margin: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            background-color: #61dafb;
+            color: #282c34;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+          }
+          
+          button:hover {
+            background-color: #4fa8c5;
+          }`;
+          
+          fs.writeFileSync('generated-app/App.css', appCss);
+          
+          // index.js
+          const indexJs = `import React from 'react';
+          import ReactDOM from 'react-dom/client';
+          import App from './App';
+          import './index.css';
+          
+          const root = ReactDOM.createRoot(document.getElementById('root'));
+          root.render(
+            <React.StrictMode>
+              <App />
+            </React.StrictMode>
+          );`;
+          
+          fs.writeFileSync('generated-app/index.js', indexJs);
+          
+          // index.html
+          const indexHtml = `<!DOCTYPE html>
+          <html lang="ja">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${appTitle}</title>
+          </head>
+          <body>
+            <div id="root"></div>
+          </body>
+          </html>`;
+          
+          fs.writeFileSync('generated-app/index.html', indexHtml);
+          
+          // README.md
+          const readme = `# ${appTitle}
+          
+          ${appDescription || 'Auto-generated application'}
+          
+          ## セットアップ
+          
+          \`\`\`bash
+          npm install
+          npm start
+          \`\`\`
+          
+          ## ビルド
+          
+          \`\`\`bash
+          npm run build
+          \`\`\`
+          `;
+          
+          fs.writeFileSync('generated-app/README.md', readme);
+          
+          console.log('✅ アプリ生成完了');
+          console.log('📁 生成されたファイル:');
+          console.log('  - package.json');
+          console.log('  - App.jsx');
+          console.log('  - App.css');
+          console.log('  - index.js');
+          console.log('  - index.html');
+          console.log('  - README.md');
+          EOF
+          
+          echo "app_generated=true" >> $GITHUB_OUTPUT
+
+      - name: 生成されたアプリをコミット
+        if: steps.generate_app.outputs.app_generated == 'true'
+        env:
+          ISSUE_NUMBER: ${{ steps.issue_info.outputs.number }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add generated-app/
+          git commit -m "🤖 Issue #${{ env.ISSUE_NUMBER }} からアプリを自動生成"
+          git push
+
+      - name: PRを作成
+        if: steps.generate_app.outputs.app_generated == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: '🤖 Issue #${{ steps.issue_info.outputs.number }} からアプリを自動生成'
+          title: '✨ Auto-generated app for Issue #${{ steps.issue_info.outputs.number }}'
+          body: |
+            ## 📦 自動生成されたアプリ
+            
+            Issue #${{ steps.issue_info.outputs.number }} に基づいて、アプリケーションが自動生成されました。
+            
+            ### 📝 詳細
+            - **タイトル**: ${{ steps.issue_info.outputs.title }}
+            - **説明**: ${{ steps.issue_info.outputs.body }}
+            
+            ### 📂 生成されたファイル
+            - `generated-app/package.json` - プロジェクト設定
+            - `generated-app/App.jsx` - メインコンポーネント
+            - `generated-app/App.css` - スタイル
+            - `generated-app/index.js` - エントリーポイント
+            - `generated-app/index.html` - HTML
+            - `generated-app/README.md` - ドキュメント
+            
+            ### 🚀 使用開始方法
+            ```bash
+            cd generated-app
+            npm install
+            npm start
+            ```
+            
+            このPRをレビューして、必要に応じて変更してください。
+          branch: auto-pr/issue-${{ steps.issue_info.outputs.number }}
+          delete-branch: false
+          labels: auto-generated, generated-app
+
+      - name: イシューにコメント
+        if: steps.generate_app.outputs.app_generated == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ アプリの自動生成が完了しました！\n\n生成されたアプリは `generated-app/` ディレクトリにあります。\n\nセットアップと実行:\n```bash\ncd generated-app\nnpm install\nnpm start\n```'
+            })
+
+      - name: エラーハンドリング - イシューにコメント
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ アプリの生成に失敗しました。ログを確認してください。'
+            })
